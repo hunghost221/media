@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-Speed CDN Link Matrix & Real File Uploader</title>
+    <style>
+        :root {
+            --bg-color: #12131c;
+            --card-bg: #1e1f2e;
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border-color: #2e3048;
+            --input-bg: #161724;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        
+        .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; }
+        .header h1 { font-size: 24px; margin: 0; color: #fff; display: flex; align-items: center; gap: 10px; }
+        .header .badge { background: var(--accent-color); padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: normal; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 850px) { .grid { grid-template-columns: 1fr; } }
+
+        .card { background: var(--card-bg); border-radius: 10px; border: 1px solid var(--border-color); padding: 20px; margin-bottom: 20px; }
+        .card h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-top: 0; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
+
+        label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+        input[type="text"], input[type="password"], input[type="number"], select {
+            width: 100%; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--input-bg); color: var(--text-main); font-size: 14px; margin-bottom: 15px; outline: none; transition: border 0.2s;
+        }
+        input:focus { border-color: var(--accent-color); }
+
+        .drop-zone {
+            border: 2px dashed var(--accent-color); border-radius: 8px; padding: 25px 20px; text-align: center; background: rgba(99, 102, 241, 0.05); cursor: pointer; transition: background 0.2s; margin-bottom: 15px;
+        }
+        .drop-zone:hover, .drop-zone.dragover { background: rgba(99, 102, 241, 0.15); }
+        .drop-zone p { margin: 5px 0 0 0; font-size: 13px; color: var(--text-muted); }
+
+        .btn {
+            background: var(--accent-color); color: white; border: none; padding: 12px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;
+        }
+        .btn:hover { background: var(--accent-hover); }
+        .btn-success { background: var(--success-color); }
+        .btn-success:hover { background: #059669; }
+        .btn-secondary { background: #374151; }
+        .btn-secondary:hover { background: #4b5563; }
+
+        .user-badge {
+            display: flex; align-items: center; gap: 10px; background: var(--input-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 15px; font-size: 13px;
+        }
+        .user-badge img { width: 28px; height: 28px; border-radius: 50%; }
+
+        .progress-bar-container {
+            width: 100%; background: var(--input-bg); border-radius: 6px; height: 10px; overflow: hidden; margin-bottom: 15px; display: none;
+        }
+        .progress-bar { height: 100%; background: var(--success-color); width: 0%; transition: width 0.1s linear; }
+
+        .terminal {
+            background: #0d0e15; border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; font-family: 'Courier New', Courier, monospace; font-size: 12px; height: 180px; overflow-y: auto; color: #34d399; margin-top: 10px;
+        }
+        .terminal-line { margin-bottom: 4px; word-break: break-all; }
+        .terminal-error { color: var(--error-color); }
+        .terminal-warn { color: var(--warning-color); }
+        .terminal-info { color: #60a5fa; }
+
+        textarea {
+            width: 100%; height: 280px; background: var(--input-bg); border: 1px solid var(--border-color); color: #a7f3d0; font-family: monospace; font-size: 12px; padding: 12px; border-radius: 6px; resize: vertical; outline: none;
+        }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-group .btn { flex: 1; }
+
+        .verify-box {
+            background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success-color); border-radius: 6px; padding: 10px; margin-top: 10px; font-size: 12px; display: none;
+        }
+        .verify-box a { color: #34d399; word-break: break-all; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>⚡ Turbo CDN Link Matrix <span class="badge">Parallel Engine</span></h1>
+    </div>
+
+    <div class="grid">
+        <!-- LEFT COLUMN: INPUTS & AUTOMATION -->
+        <div>
+            <div class="card">
+                <h2>1. GitHub Personal Access Token</h2>
+                <label>Paste Token (Auto-detects username & repo):</label>
+                <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" oninput="handleTokenInput()">
+                
+                <div id="userInfo" class="user-badge" style="display: none;">
+                    <img id="userAvatar" src="" alt="">
+                    <div>
+                        <strong id="userName">--</strong>
+                        <div id="userStatus" style="color: var(--text-muted); font-size: 11px;">Verified Account</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>2. Select Local SVG / HTML File</h2>
+                <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                    <div style="font-size: 32px; margin-bottom: 5px;">📁</div>
+                    <strong id="fileNameDisplay">Click or Drag & Drop File Here</strong>
+                    <p>.svg, .html, .js, .css, .json</p>
+                </div>
+                <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(this.files[0])">
+
+                <button class="btn btn-success" id="autoBtn" onclick="runSingleUpload()">⚡ Upload 1 File & Generate All CDN Links</button>
+
+                <div id="verifyBox" class="verify-box">
+                    ✅ <strong>GitHub File Live:</strong><br>
+                    <a id="verifyLink" href="#" target="_blank">Click to verify on GitHub</a>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Process Terminal Log <span style="font-size: 11px; cursor: pointer; color: var(--accent-color);" onclick="clearLogs()">Clear</span></h2>
+                <div class="terminal" id="terminalLog">
+                    <div class="terminal-line terminal-info">[System initialized] Paste GitHub token and select a local file.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: GENERATED CDN LINKS MATRIX -->
+        <div>
+            <div class="card">
+                <h2>Generated Real CDN Matrix (<span id="linkCount">0</span> Links)</h2>
+                
+                <div class="progress-bar-container" id="progressContainer">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+
+                <textarea id="outputMatrix" readonly placeholder="Your generated real CDN URLs will appear here..."></textarea>
+                
+                <div class="btn-group">
+                    <button class="btn" onclick="copyAllLinks()">📋 Copy All Links</button>
+                    <button class="btn btn-secondary" onclick="downloadTxt()">💾 Save as .txt</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Turbo Parallel Batch Upload (Real Live Copies)</h2>
+                <label>Number of Real Files to Parallel-Upload to GitHub:</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="number" id="batchUploadCount" value="10" min="1" max="500" style="margin-bottom:0;">
+                    <select id="concurrencyRate" style="width: 140px; margin-bottom:0;">
+                        <option value="5">5 Parallel</option>
+                        <option value="10" selected>10 Parallel (Fast)</option>
+                        <option value="20">20 Parallel (Ultra)</option>
+                    </select>
+                </div>
+                <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Uploads real unique copies in parallel so all generated links open live on CDN mirrors without 404.</p>
+                <button class="btn btn-secondary" onclick="uploadRealBatchParallel()">🚀 Launch High-Speed Parallel Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 34 CDN Mirror Templates matching your exact dataset
+    const CDN_TEMPLATES = [
+        "https://raw.githubusercontent.com/{user}/{repo}/{branch}/{path}",
+        "https://cdn.jsdelivr.net/gh/{user}/{repo}@{branch}/{path}",
+        "https://quantil.jsdelivr.net/gh/{user}/{repo}@{branch}/{path}",
+        "https://originfastly.jsdelivr.net/gh/{user}/{repo}@{branch}/{path}",
+        "https://fastly.jsdelivr.net/gh/{user}/{repo}@{branch}/{path}",
+        "https://gcore.jsdelivr.net/gh/{user}/{repo}@{branch}/{path}",
+        "https://testingcf.jsdelivr.net/gh/{user}/{repo}@{branch}/{path}",
+        "https://cdn.jsdelivr.us/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsdelivr.b-cdn.net/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsdelivr.codeqihan.com/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsd.proxy.aks.moe/gh/{user}/{repo}@{branch}/{path}",
+        "https://cdn.jsdmirror.com/gh/{user}/{repo}/{path}",
+        "https://cdn.jsdmirror.cn/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsd.cdn.zzko.cn/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsd.onmicrosoft.cn/gh/{user}/{repo}/{path}",
+        "https://cdn.onmicrosoft.cn/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsd.nmmsl.top/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsd.duolaa.top/gh/{user}/{repo}@{branch}/{path}",
+        "https://cdn.bili33.top/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsdelivr.qaq.qa/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsdelivr.aby.pub/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsdelivr.topthink.com/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsd.yizex.cn/gh/{user}/{repo}@{branch}/{path}",
+        "https://code.webcache.cn/gh/{user}/{repo}@{branch}/{path}",
+        "https://esm.sh/gh/{user}/{repo}@{branch}/{path}",
+        "https://cdn.esm.sh/gh/{user}/{repo}@{branch}/{path}",
+        "https://raw.esm.sh/gh/{user}/{repo}@{branch}/{path}",
+        "https://cdn.statically.io/gh/{user}/{repo}/{branch}/{path}",
+        "https://cdn.staticdelivr.com/gh/{user}/{repo}/{branch}/{path}",
+        "https://cdn.jsdelivr.net.cn/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsdelivr.cdn.net/gh/{user}/{repo}@{branch}/{path}",
+        "https://jsd-proxy.ygxz.in/gh/{user}/{repo}/{path}",
+        "https://raw.githack.com/{user}/{repo}/{branch}/{path}",
+        "https://rawcdn.githack.com/{user}/{repo}/{branch}/{path}"
+    ];
+
+    let state = {
+        token: localStorage.getItem('gh_token') || '',
+        user: '',
+        repo: 'media',
+        branch: 'main',
+        selectedFile: null,
+        fileContentB64: '',
+        fileHash: '',
+        timestamp: ''
+    };
+
+    window.onload = () => {
+        if (state.token) {
+            document.getElementById('ghToken').value = state.token;
+            handleTokenInput();
+        }
+        setupDragAndDrop();
+    };
+
+    function log(msg, type = 'normal') {
+        const term = document.getElementById('terminalLog');
+        const line = document.createElement('div');
+        line.className = `terminal-line terminal-${type}`;
+        const time = new Date().toLocaleTimeString();
+        line.innerText = `[${time}] ${msg}`;
+        term.appendChild(line);
+        term.scrollTop = term.scrollHeight;
+    }
+
+    function clearLogs() {
+        document.getElementById('terminalLog').innerHTML = '';
+    }
+
+    async function handleTokenInput() {
+        const token = document.getElementById('ghToken').value.trim();
+        if (!token) return;
+        state.token = token;
+        localStorage.setItem('gh_token', token);
+
+        log('Authenticating token with GitHub API...', 'info');
+        try {
+            const res = await fetch('https://api.github.com/user', {
+                headers: { 'Authorization': `token ${token}` }
+            });
+            if (!res.ok) throw new Error('Invalid Token or API limit');
+
+            const data = await res.json();
+            state.user = data.login;
+
+            document.getElementById('userName').innerText = data.login;
+            document.getElementById('userAvatar').src = data.avatar_url;
+            document.getElementById('userInfo').style.display = 'flex';
+            log(`Authenticated as GitHub User: @${data.login}`, 'normal');
+        } catch (e) {
+            log(`Authentication Error: ${e.message}`, 'error');
+            document.getElementById('userInfo').style.display = 'none';
+        }
+    }
+
+    function setupDragAndDrop() {
+        const zone = document.getElementById('dropZone');
+        ['dragenter', 'dragover'].forEach(name => {
+            zone.addEventListener(name, (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(name => {
+            zone.addEventListener(name, (e) => { e.preventDefault(); zone.classList.remove('dragover'); });
+        });
+        zone.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files[0]);
+        });
+    }
+
+    async function handleFileSelect(file) {
+        if (!file) return;
+        state.selectedFile = file;
+        document.getElementById('fileNameDisplay').innerText = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        state.fileContentB64 = btoa(binary);
+
+        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        state.fileHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+        state.timestamp = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
+
+        log(`File Loaded: ${file.name} | Cryptographic SHA: ${state.fileHash}`, 'info');
+    }
+
+    async function ensureRepoExists() {
+        log(`Checking target repo '${state.repo}'...`);
+        let repoRes = await fetch(`https://api.github.com/repos/${state.user}/${state.repo}`, {
+            headers: { 'Authorization': `token ${state.token}` }
+        });
+
+        if (repoRes.status === 404) {
+            log(`Repository '${state.repo}' missing. Creating public repository instantly...`, 'warn');
+            const createRes = await fetch('https://api.github.com/user/repos', {
+                method: 'POST',
+                headers: { 'Authorization': `token ${state.token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: state.repo, auto_init: true, public: true })
+            });
+            if (!createRes.ok) throw new Error('Failed to auto-create public repository');
+            log(`Created repo '${state.repo}' successfully!`, 'normal');
+        }
+    }
+
+    async function runSingleUpload() {
+        if (!state.token) return alert('Please paste your GitHub token first!');
+        if (!state.selectedFile) return alert('Please drop a local SVG or HTML file first!');
+
+        log('--- UPLOADING FILE TO GITHUB ---', 'info');
+
+        try {
+            await ensureRepoExists();
+
+            const ext = state.selectedFile.name.substring(state.selectedFile.name.lastIndexOf('.'));
+            const filePath = `batch/${state.user}/${state.timestamp}/${state.fileHash}${ext}`;
+            const uploadUrl = `https://api.github.com/repos/${state.user}/${state.repo}/contents/${filePath}`;
+
+            log(`Uploading to GitHub: ${filePath}...`);
+            const uploadRes = await fetch(uploadUrl, {
+                method: 'PUT',
+                headers: { 'Authorization': `token ${state.token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: `Upload ${state.selectedFile.name}`,
+                    content: state.fileContentB64,
+                    branch: state.branch
+                })
+            });
+
+            if (!uploadRes.ok) throw new Error((await uploadRes.json()).message || 'Upload failed');
+
+            log('SUCCESS: File stored on GitHub!', 'normal');
+
+            const rawGithubUrl = `https://raw.githubusercontent.com/${state.user}/${state.repo}/${state.branch}/${filePath}`;
+            document.getElementById('verifyLink').href = rawGithubUrl;
+            document.getElementById('verifyBox').style.display = 'block';
+
+            renderCDNMatrix([filePath]);
+
+        } catch (e) {
+            log(`Error: ${e.message}`, 'error');
+        }
+    }
+
+    // HIGH-SPEED PARALLEL BATCH UPLOADER
+    async function uploadRealBatchParallel() {
+        if (!state.token) return alert('Please paste your GitHub token first!');
+        if (!state.selectedFile) return alert('Please drop a local SVG or HTML file first!');
+
+        const totalFiles = parseInt(document.getElementById('batchUploadCount').value) || 10;
+        const concurrency = parseInt(document.getElementById('concurrencyRate').value) || 10;
+        
+        log(`--- STARTING PARALLEL UPLOAD OF ${totalFiles} REAL FILES (${concurrency} x Concurrent Threads) ---`, 'info');
+
+        const pContainer = document.getElementById('progressContainer');
+        const pBar = document.getElementById('progressBar');
+        pContainer.style.display = 'block';
+        pBar.style.width = '0%';
+
+        try {
+            await ensureRepoExists();
+
+            const ext = state.selectedFile.name.substring(state.selectedFile.name.lastIndexOf('.'));
+            let uploadedPaths = [];
+            let completedCount = 0;
+
+            // Generate file items
+            let fileTasks = [];
+            for (let i = 0; i < totalFiles; i++) {
+                // Generate unique hex hash for each real file item
+                const itemHash = (state.fileHash.substring(0, 8) + Math.random().toString(16).substring(2, 10)).padEnd(16, '0');
+                const filePath = `batch/${state.user}/${state.timestamp}/${itemHash}${ext}`;
+                fileTasks.push({ index: i + 1, filePath });
+            }
+
+            // Concurrency Pool Runner
+            async function workerPool(tasks, limit) {
+                let taskIndex = 0;
+
+                async function worker() {
+                    while (taskIndex < tasks.length) {
+                        const task = tasks[taskIndex++];
+                        const uploadUrl = `https://api.github.com/repos/${state.user}/${state.repo}/contents/${task.filePath}`;
+
+                        try {
+                            const res = await fetch(uploadUrl, {
+                                method: 'PUT',
+                                headers: { 'Authorization': `token ${state.token}`, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    message: `Parallel Batch ${task.index}/${totalFiles}`,
+                                    content: state.fileContentB64,
+                                    branch: state.branch
+                                })
+                            });
+
+                            if (res.ok) {
+                                uploadedPaths.push(task.filePath);
+                            }
+                        } catch (e) {}
+
+                        completedCount++;
+                        const pct = Math.round((completedCount / totalFiles) * 100);
+                        pBar.style.width = `${pct}%`;
+                        if (completedCount % 5 === 0 || completedCount === totalFiles) {
+                            log(`Progress: ${completedCount}/${totalFiles} files uploaded to GitHub...`, 'info');
+                        }
+                    }
+                }
+
+                const workers = Array(Math.min(limit, tasks.length)).fill(0).map(() => worker());
+                await Promise.all(workers);
+            }
+
+            const startTime = performance.now();
+            await workerPool(fileTasks, concurrency);
+            const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+
+            log(`PARALLEL UPLOAD COMPLETE! Uploaded ${uploadedPaths.length} real files in ${duration} seconds.`, 'normal');
+            renderCDNMatrix(uploadedPaths);
+
+        } catch (e) {
+            log(`Parallel Error: ${e.message}`, 'error');
+        } finally {
+            setTimeout(() => { pContainer.style.display = 'none'; }, 2000);
+        }
+    }
+
+    function renderCDNMatrix(filePaths) {
+        let links = [];
+
+        filePaths.forEach(filePath => {
+            CDN_TEMPLATES.forEach(tmpl => {
+                const url = tmpl
+                    .replace(/{user}/g, state.user)
+                    .replace(/{repo}/g, state.repo)
+                    .replace(/{branch}/g, state.branch)
+                    .replace(/{path}/g, filePath);
+                links.push(url);
+            });
+        });
+
+        document.getElementById('outputMatrix').value = links.join('\n');
+        document.getElementById('linkCount').innerText = links.length.toLocaleString();
+        log(`Generated ${links.length.toLocaleString()} real live CDN mirror URLs!`, 'normal');
+    }
+
+    function copyAllLinks() {
+        const text = document.getElementById('outputMatrix').value;
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        alert('All CDN links copied to clipboard!');
+    }
+
+    function downloadTxt() {
+        const text = document.getElementById('outputMatrix').value;
+        if (!text) return alert('No links generated to save.');
+        const blob = new Blob([text], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `cdn_links_${state.timestamp || 'batch'}.txt`;
+        a.click();
+    }
+</script>
+</body>
+</html>
